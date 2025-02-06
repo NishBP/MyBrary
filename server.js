@@ -7,13 +7,14 @@ const app = express()
 const expressLayouts = require('express-ejs-layouts')
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
+const path = require('path')
 
 // Middleware
 app.set('view engine', 'ejs')
-app.set('views', __dirname + '/views')
+app.set('views', path.join(__dirname, 'views'))
 app.set('layout', 'layouts/layout')
 app.use(expressLayouts)
-app.use(express.static('public'))
+app.use(express.static(path.join(__dirname, 'public')))
 app.use(bodyParser.urlencoded({ limit: '10mb', extended: false}))
 
 app.use((req, res, next) => {
@@ -22,13 +23,26 @@ app.use((req, res, next) => {
 });
 
 // MongoDB Connection
-mongoose.connect(process.env.DATABASE_URL || 'mongodb://localhost:27017/mybrary', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
-const db = mongoose.connection
-db.on('error', error => console.error(error))
-db.once('open', () => console.log('Connected to Mongoose'))
+let cachedDb = null
+
+async function connectToDatabase() {
+    if (cachedDb) {
+        return cachedDb
+    }
+    
+    const db = await mongoose.connect(process.env.DATABASE_URL, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+    })
+    
+    cachedDb = db
+    return db
+}
+
+// Connect to MongoDB before setting up routes
+connectToDatabase()
+    .then(() => console.log('Connected to MongoDB'))
+    .catch(err => console.error('MongoDB connection error:', err))
 
 // Routes
 const indexRouter = require('./routes/index')
@@ -40,11 +54,23 @@ app.use('/authors', authorRouter)
 const bookRouter = require('./routes/books')
 app.use('/books', bookRouter)
 
-
-// Start Server
-const PORT = process.env.PORT || 3000
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`)
+// Error handling
+app.use((err, req, res, next) => {
+    console.error(err.stack)
+    res.status(500).send('Something broke!')
 })
+
+// Handle 404s
+app.use((req, res) => {
+    res.status(404).send('Page not found')
+})
+
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+    const PORT = process.env.PORT || 3000
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`)
+    })
+}
 
 module.exports = app

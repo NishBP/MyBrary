@@ -4,7 +4,6 @@
     <div>
         <label> Title </label>
         <input type="text" name="title" value="<%= searchOptions.title %>">
-        <button type="submit">Search</button>
     </div>
     <div>
         <label>Published after</label>
@@ -17,6 +16,9 @@
     <button type="submit">Search</button>
 </form>
 <br>
-<% books.forEach(book => { %>
-    <img height="150" width="100" src="<%= book.coverImagePath %>">
-<% }) %>
+
+<div>
+    <% books.forEach(book => { %>
+        <img height="150" width="100" src="<%= book.coverImagePath %>">
+    <% }) %>
+</div>
